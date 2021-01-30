@@ -1,0 +1,140 @@
+#Importing Libraries
+library(knitr)
+library(tidyverse)
+library(ggplot2)
+library(mice)
+library(lattice)
+library(reshape2)
+library(DataExplorer)
+
+#Importing Datasets
+data <- read.csv(file.choose())
+View(data)
+data=data[,-1]
+data
+
+data <- na.omit(data)
+View(data)
+
+#Exploratory Data Analysis
+#dim function to print out 
+#the dimensionality of our dataframe.
+dim(data)
+# str method will allows us to know the data type of each variable
+str(data)
+#the summary() function
+#returns the 5-number summary showing 
+#5 descriptive statistic as 
+#these are numeric values.
+summary(data)
+#a simple way to quickly find out 
+#how much an impact a variable has 
+#on our final outcome. 
+#There are other ways as well 
+#to figure this out.
+
+plot_correlation(na.omit(data), maxcat = 5L)
+
+#let's have a univariate analysis 
+#of our variables. We'll start with 
+#the categorical variables and have 
+#a quick check on the frequency of distribution 
+#of categories. The code below will allow us 
+#to observe the required graphs
+
+plot_histogram(data)
+
+#replace yes with 1, replace no with 0
+
+data$owner=ifelse(data$owner=="yes",1,0)
+data$selfemp=ifelse(data$selfemp=="yes",1,0)
+data
+
+#Pre-processing
+#Standardization is a transformation 
+#that centers the data by removing 
+#the mean value of each feature and then 
+#scale it by dividing (non-constant) features 
+#by their standard deviation. After standardizing 
+#data the mean will be zero and the standard deviation one
+data[, 2:12] <- scale(data[, 2:12])
+head(data)
+
+#70% of the data into training data  
+
+data1 = sort(sample(nrow(data), nrow(data)*.7))
+
+#creating training data set by selecting the output row values
+train <- data[data1,]
+
+#creating test data set by not selecting the output row values
+test <- data[-data1,]
+
+#print the dimensions of all these variables 
+#using the dim method. 
+#You can notice the 70-30% split.
+dim(train)
+dim(test)
+
+#Model Development
+#with a few lines of code 
+#we'll first create a logistic regression model 
+#which as has been imported from 
+#scikit learn's linear model package 
+#to our variable named model.
+
+#Followed by this, we'll train our model 
+#using the fit method with X_train and y_train 
+#that contain 70% of our dataset. 
+#This will be a binary classification model.
+## fit a logistic regression model with the training dataset
+#log.model <- glm(card ~., data = train, family = binomial(link = "logit"))
+#summary(log.model)
+model <- glm(card~.,data=train,family = "binomial")
+summary(model)
+
+# Confusion matrix table 
+prob <- predict(model,type=c("response"),data)
+prob
+
+confusion<-table(prob>0.5,data$card)
+confusion
+
+# Model Accuracy 
+Accuracy<-sum(diag(confusion)/sum(confusion))
+Accuracy #85.60
+sum(confusion[cbind(2:1, 1:2)])/sum(confusion)
+?diag
+
+#we'll use the predict method 
+#to find out the predictions 
+#made by our method
+
+pred_values <- NULL
+yes_no <- NULL
+for (i in 1:1319){
+  pred_values[i] <- ifelse(prob[i]>=0.5,1,0)
+  yes_no[i] <- ifelse(prob[i]>=0.5,"yes","no")
+}
+
+#new columns
+data[,"prob"] <- prob
+View(prob)
+data[,"pred_values"] <- pred_values
+View(pred_values)
+data[,"yes_no"] <- yes_no
+View(data)
+
+View(data[,c(2,8,9,10)])
+
+acc <- table(data$card,pred_values)
+acc
+Accuracy<-sum(diag(acc)/sum(acc))
+Accuracy # 85.60
+
+# ROC Curve 
+install.packages("ROCR")
+library(ROCR)
+rocrpred<-prediction(prob,data$card)
+rocrperf<-performance(rocrpred,'tpr','fpr')
+plot(rocrperf,colorize=T,text.adj=c(-0.2,1.7))
