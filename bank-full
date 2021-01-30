@@ -1,0 +1,39 @@
+data<-read.csv('bank-full.csv',sep = ';')
+head(data)
+
+str(data)
+
+datamodel<-glm(y~.,data = data,family = binomial)
+summary(datamodel)
+
+#The predictions based on model 
+#that we created using the data 
+#Those predictions are pitted against 
+#the existing actual outcomes 
+#of our target variable and 
+#we create a confusion matrix with it
+
+data$predict<-predict(datamodel,data=data,type='response')
+cm=table(data$y,data$predict>0.5)
+cm
+
+#Summing up the diagonal values 
+#of the confusion matrix to get 
+#the accuracy of the model built 
+#Calculating rowsums and colsums for precision ,
+#recall and f1 score of the model
+
+n = sum(cm) # number of instances
+diag = diag(cm) # number of correctly classified instances per class 
+rowsums = apply(cm, 1, sum) # number of instances per class
+colsums = apply(cm, 2, sum) # number of predictions per class
+accuracy = sum(diag) / n 
+accuracy
+
+#The model is able to predict 
+#0's (FAlSE) better than 1's(TRUE)
+
+precision = diag / colsums 
+recall = diag / rowsums 
+f1 = 2 * precision * recall / (precision + recall) 
+data.frame(precision, recall, f1)
